@@ -1,0 +1,21 @@
+Performing initial scrape...
+Starting scrape of 3 sources...
+Fetching events from Harvard University via Localist API...
+
+╔════════════════════════════════════════╗
+║   Event Notifier Server Running        ║
+╠════════════════════════════════════════╣
+║   URL: http://localhost:3000         ║
+║   Scraping: Every 2 hours              ║
+╚════════════════════════════════════════╝
+  
+Error fetching from Harvard University Localist API: Request failed with status code 403
+  Status: 403
+  URL: https://calendar.college.harvard.edu/api/2/events
+Fetching events from MIT via Localist API...
+Error fetching from MIT Localist API: Request failed with status code 403
+  Status: 403
+  URL: https://calendar.mit.edu/api/2/events
+Generated 6 demo events
+Scraping complete. Found 6 total events.
+Initial scrape complete

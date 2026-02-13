@@ -1,0 +1,19 @@
+{
+  "name": "event-notifier",
+  "version": "1.0.0",
+  "description": "Event notification app that crawls university event pages",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["events", "crawler", "notifications"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "node-cron": "^3.0.3"
+  }
+}
