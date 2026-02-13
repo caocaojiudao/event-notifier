@@ -723,6 +723,7 @@
             tags: new Set(),
             sources: new Set()
         };
+        let cachedFilterOptions = null; // Cache filter options to avoid regenerating
 
         // Load events on page load
         document.addEventListener('DOMContentLoaded', () => {
@@ -749,7 +750,13 @@
                 // Show filter panel if we have events
                 if (allEvents.length > 0) {
                     document.getElementById('filter-panel').style.display = 'block';
-                    populateFilters();
+                    document.getElementById('filter-actions').style.display = 'flex'; // Show buttons
+                    // Only populate filters if options have changed
+                    if (shouldUpdateFilters()) {
+                        populateFilters();
+                    }
+                } else {
+                    document.getElementById('filter-panel').style.display = 'none';
                 }
 
                 renderEvents();
@@ -1128,31 +1135,60 @@
             }
         }
 
-        function populateFilters() {
+        function shouldUpdateFilters() {
+            // Extract current filter options from events
             const tags = new Set();
             const sources = new Set();
 
-            // Extract unique values from all events
             allEvents.forEach(event => {
                 if (event.tags && Array.isArray(event.tags)) {
                     event.tags.forEach(tag => {
                         if (tag) tags.add(tag);
                     });
                 }
-                if (event.source) {
-                    sources.add(event.source);
-                }
+                if (event.source) sources.add(event.source);
             });
+
+            // Create a string representation for comparison
+            const currentOptions = JSON.stringify({
+                tags: Array.from(tags).sort(),
+                sources: Array.from(sources).sort()
+            });
+
+            // Check if options have changed
+            if (cachedFilterOptions === currentOptions) {
+                return false; // No change, don't update
+            }
+
+            cachedFilterOptions = currentOptions;
+            return true; // Options changed, update needed
+        }
+
+        function populateFilters() {
+            const tags = new Set();
+            const sources = new Set();
+
+            // Extract unique values from all events (optimized single pass)
+            for (const event of allEvents) {
+                if (event.tags && Array.isArray(event.tags)) {
+                    for (const tag of event.tags) {
+                        if (tag) tags.add(tag);
+                    }
+                }
+                if (event.source) sources.add(event.source);
+            }
 
             // Populate tag filters
             const tagContainer = document.getElementById('tag-filters');
             if (tags.size > 0) {
-                tagContainer.innerHTML = Array.from(tags).sort().map(tag => `
-                    <div class="filter-option">
+                const sortedTags = Array.from(tags).sort();
+                // Use innerHTML for simplicity - only called when filters actually change
+                tagContainer.innerHTML = sortedTags.map(tag =>
+                    `<div class="filter-option">
                         <input type="checkbox" id="tag-${sanitizeId(tag)}" value="${tag}" onchange="updateFilters()">
                         <label for="tag-${sanitizeId(tag)}">${tag}</label>
-                    </div>
-                `).join('');
+                    </div>`
+                ).join('');
             } else {
                 tagContainer.innerHTML = '<p style="color: #999; font-size: 0.9em;">No tags available</p>';
             }
@@ -1160,12 +1196,13 @@
             // Populate source filters
             const sourceContainer = document.getElementById('source-filters');
             if (sources.size > 0) {
-                sourceContainer.innerHTML = Array.from(sources).sort().map(source => `
-                    <div class="filter-option">
+                const sortedSources = Array.from(sources).sort();
+                sourceContainer.innerHTML = sortedSources.map(source =>
+                    `<div class="filter-option">
                         <input type="checkbox" id="source-${sanitizeId(source)}" value="${source}" onchange="updateFilters()">
                         <label for="source-${sanitizeId(source)}">${source}</label>
-                    </div>
-                `).join('');
+                    </div>`
+                ).join('');
             } else {
                 sourceContainer.innerHTML = '<p style="color: #999; font-size: 0.9em;">No sources available</p>';
             }
@@ -1205,24 +1242,30 @@
                 // No filters selected, show all events
                 events = allEvents;
             } else {
-                // Filter events based on selected criteria
+                // Optimized filtering with early returns
+                const hasTagFilter = activeFilters.tags.size > 0;
+                const hasSourceFilter = activeFilters.sources.size > 0;
+
                 events = allEvents.filter(event => {
-                    let matchesTag = activeFilters.tags.size === 0;
-                    let matchesSource = activeFilters.sources.size === 0;
+                    // Check source first (faster lookup)
+                    if (hasSourceFilter) {
+                        if (!event.source || !activeFilters.sources.has(event.source)) {
+                            return false;
+                        }
+                    }
 
                     // Check tags
-                    if (activeFilters.tags.size > 0 && event.tags && Array.isArray(event.tags)) {
-                        matchesTag = event.tags.some(tag => activeFilters.tags.has(tag));
+                    if (hasTagFilter) {
+                        if (!event.tags || !Array.isArray(event.tags)) {
+                            return false;
+                        }
+                        // Use some() with early termination
+                        if (!event.tags.some(tag => activeFilters.tags.has(tag))) {
+                            return false;
+                        }
                     }
 
-                    // Check source
-                    if (activeFilters.sources.size > 0 && event.source) {
-                        matchesSource = activeFilters.sources.has(event.source);
-                    }
-
-                    // Event must match at least one criterion from each active filter category
-                    return (activeFilters.tags.size === 0 || matchesTag) &&
-                           (activeFilters.sources.size === 0 || matchesSource);
+                    return true;
                 });
             }
 
